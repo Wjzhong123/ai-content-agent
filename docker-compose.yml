@@ -1,0 +1,77 @@
+version: '3.8'
+
+services:
+  content-scraper-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: content-scraper-mcp
+    image: content-scraper-mcp:latest
+    
+    ports:
+      - "3001:3001"
+    
+    volumes:
+      # 抓取内容输出目录
+      - ../scraped_content:/app/scraped_content
+      # 日志目录
+      - ./logs:/app/logs
+      # 配置文件（可选，覆盖默认配置）
+      - ./scrapers-config:/app/scrapers-config
+    
+    environment:
+      - OUTPUT_DIR=/app/scraped_content
+      - LOG_LEVEL=INFO
+      - REDDIT_CLIENT_ID=${REDDIT_CLIENT_ID:-}
+      - REDDIT_CLIENT_SECRET=${REDDIT_CLIENT_SECRET:-}
+      - REDDIT_USER_AGENT=ContentScraper/1.0
+      - PYTHONUNBUFFERED=1
+    
+    # 网络配置
+    networks:
+      - scraper-network
+    
+    # 重启策略
+    restart: unless-stopped
+    
+    # 健康检查
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health", "||", "exit", "1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Redis缓存（用于大规模抓取）
+  redis:
+    image: redis:7-alpine
+    container_name: scraper-redis
+    restart: unless-stopped
+    networks:
+      - scraper-network
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+
+  # Qdrant向量数据库
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: scraper-qdrant
+    restart: unless-stopped
+    networks:
+      - scraper-network
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant-data:/qdrant/storage
+    environment:
+      - QDRANT__SERVICE__HTTP_PORT=6333
+      - QDRANT__SERVICE__GRPC_PORT=6334
+
+networks:
+  scraper-network:
+    driver: bridge
+
+volumes:
+  redis-data:
