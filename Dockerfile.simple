@@ -1,0 +1,32 @@
+# 简化版Dockerfile - 不包含Playwright浏览器
+# 构建更快，适合测试
+
+FROM python:3.10-slim
+
+WORKDIR /app
+
+# 安装系统依赖（精简版）
+RUN apt-get update && apt-get install -y \
+    curl \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# 复制依赖文件
+COPY requirements.txt .
+
+# 安装Python依赖（不使用缓存）
+RUN pip install --no-cache-dir -r requirements.txt
+
+# 复制源代码
+COPY src/ ./src/
+
+# 创建输出目录
+RUN mkdir -p /app/scraped_content /app/logs
+
+# 设置环境变量
+ENV PYTHONPATH=/app
+ENV OUTPUT_DIR=/app/scraped_content
+ENV PYTHONUNBUFFERED=1
+
+# 默认运行测试
+CMD ["python", "-c", "print('AI Content Agent Ready!')"]
