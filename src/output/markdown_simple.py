@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import List, Dict, Any, Optional
 from loguru import logger
 
-from models.content_model import ContentItem
+from ..models.content_model import ContentItem
 
 
 class MarkdownGenerator:
